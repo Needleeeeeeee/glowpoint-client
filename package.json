@@ -7,7 +7,8 @@
     "dev": "vite",
     "build": "vite build",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "postbuild": "cp build/static/js/*.js build/static/js/main.js 2>/dev/null || true"
   },
   "dependencies": {
     "@emotion/react": "^11.14.0",
