@@ -565,7 +565,7 @@ const Contact = ({ recentlyBooked, setRecentlyBooked, onFeedbackClick }) => {
           result.error.message ||
             "An error occurred while saving your appointment."
         );
-        await addFailedAppointment({
+        await addFailedAppointment(paymentInstruction.paymentType === "cancellation" ? cancellationData?.appointmentId : null, { // Pass appointmentId for cancellations
           ...(formData || cancellationData),
           reason: result.error.message,
         });
@@ -576,6 +576,7 @@ const Contact = ({ recentlyBooked, setRecentlyBooked, onFeedbackClick }) => {
             id: result.data.id,
             ...(formData || {}),
             ...result.data,
+            Total: formData.totalPrice, // Ensure Total is correctly mapped
           };
           Cookies.set(
             RECENTLY_BOOKED_APPOINTMENT_COOKIE,
@@ -644,24 +645,31 @@ const Contact = ({ recentlyBooked, setRecentlyBooked, onFeedbackClick }) => {
     setIsExistingCancelModalOpen(false);
 
     try {
-      const cancelData = {
-        name: appointmentData.Name,
-        phone: appointmentData.Phone,
-        date: appointmentData.Date,
-        time: appointmentData.Time,
-        selectedServices: appointmentData.Services || [],
-        totalPrice: appointmentData.Total || 0,
+      // Normalize appointmentData keys to lowercase for payment processing
+      // This ensures consistency whether data comes from recentlyBooked (uppercase keys)
+      // or existingAppointmentError.details (mixed keys)
+      const normalizedCancelData = {
+        name: appointmentData.Name || appointmentData.name,
+        phone: appointmentData.Phone || appointmentData.phone,
+        email: appointmentData.Email || appointmentData.email,
+        date: appointmentData.Date || appointmentData.date,
+        time: appointmentData.Time || appointmentData.time,
+        selectedServices: appointmentData.Services || appointmentData.selectedServices || [],
+        totalPrice: appointmentData.Total || appointmentData.totalPrice || 0,
+      };
+
+      // Store the original ID for later use in finalizeCancellationWithPayment
+      const cancellationDetails = {
+        appointmentId: appointmentData.id,
+        ...normalizedCancelData,
       };
 
       const paymentResult = await processGCashPayment(
-        cancelData, PAYMENT_CONFIG.cancellationFee
+        normalizedCancelData, PAYMENT_CONFIG.cancellationFee
       );
 
       if (paymentResult.success) {
-        setCancellationData({
-          appointmentId: appointmentData.id,
-          ...cancelData,
-        });
+        setCancellationData(cancellationDetails);
         setPaymentInstruction(paymentResult.paymentInstruction);
         setIsPaymentModalOpen(true);
       } else {
@@ -681,6 +689,7 @@ const Contact = ({ recentlyBooked, setRecentlyBooked, onFeedbackClick }) => {
   // Also update the handleCancelRecentAppointment function to use the new fee system
   const handleCancelRecentAppointment = () => {
     if (!recentlyBooked) return;
+    // Pass the original recentlyBooked object; handleCancelWithFee will normalize it
     handleCancelWithFee(recentlyBooked);
     setIsRecentCancelModalOpen(false);
   };
@@ -694,7 +703,11 @@ const Contact = ({ recentlyBooked, setRecentlyBooked, onFeedbackClick }) => {
     setEmail(recentlyBooked.Email || "");
     setDate(recentlyBooked.Date);
     setTime(recentlyBooked.Time);
-    setSelectedServices(recentlyBooked.Services);
+
+    // Ensure services are always an array
+    const services = recentlyBooked.Services;
+    const servicesArray = Array.isArray(services) ? services : (typeof services === 'string' ? [services] : []);
+    setSelectedServices(servicesArray);
 
     // Set the form to reschedule mode
     setRescheduleData({ id: recentlyBooked.id });
@@ -1442,8 +1455,12 @@ const Contact = ({ recentlyBooked, setRecentlyBooked, onFeedbackClick }) => {
                   {existingAppointmentError.details.Name || "N/A"}
                 </p>
                 <p>
+                  <strong>Phone:</strong>{" "}
+                  {existingAppointmentError.details.Phone || "N/A"}
+                </p>
+                <p>
                   <strong>Email:</strong>{" "}
-                  {existingAppointmentError.details.Email || "Not provided"}
+                  {existingAppointmentError.details.Email || "Not Provided"}
                 </p>
                 <p>
                   <strong>Date:</strong>{" "}
@@ -1515,7 +1532,7 @@ const Contact = ({ recentlyBooked, setRecentlyBooked, onFeedbackClick }) => {
           isOpen={isRecentCancelModalOpen}
           onClose={() => setIsRecentCancelModalOpen(false)}
           onConfirm={() => {
-            if (recentlyBooked) {
+            if (recentlyBooked) { // recentlyBooked already has uppercase keys, handleCancelWithFee will normalize
               handleCancelWithFee(recentlyBooked);
               setIsRecentCancelModalOpen(false);
             }
@@ -1540,6 +1557,12 @@ const Contact = ({ recentlyBooked, setRecentlyBooked, onFeedbackClick }) => {
                 <p>
                   <strong>Name:</strong> {recentlyBooked.Name}
                 </p>
+              <p>
+                <strong>Phone:</strong> {recentlyBooked.Phone}
+              </p>
+              <p>
+                <strong>Email:</strong> {recentlyBooked.Email || "Not provided"}
+              </p>
                 <p>
                   <strong>Date:</strong>{" "}
                   {format(new Date(recentlyBooked.Date), "MMMM d, yyyy")}
@@ -1600,17 +1623,28 @@ const Contact = ({ recentlyBooked, setRecentlyBooked, onFeedbackClick }) => {
           onConfirm={() => {
             if (existingAppointmentError && existingAppointmentError.details) {
               // Create appointment data structure for cancellation
+              let services = existingAppointmentError.details.Services || [];
+              // The services from the DB might be a JSON string, so we need to parse it.
+              if (typeof services === 'string') {
+                try {
+                  services = JSON.parse(services);
+                } catch (e) {
+                  console.error("Failed to parse services string:", e);
+                  services = [];
+                }
+              }
               const appointmentToCancel = {
                 id: existingAppointmentError.id,
                 Name: existingAppointmentError.details.Name || "Customer",
                 Phone: phone, // Use phone from form
+                Email: existingAppointmentError.details.Email, // Use email from details
                 Date: date, // Use date from form
                 Time: existingAppointmentError.details.Time,
-                Services: existingAppointmentError.details.Services || [],
-                Total: existingAppointmentError.details.Total || 0,
+                selectedServices: services,
+                totalPrice: existingAppointmentError.details.Total || 0
               };
 
-              handleCancelWithFee(appointmentToCancel);
+              handleCancelWithFee(appointmentToCancel); // appointmentToCancel has mixed keys, handleCancelWithFee will normalize
               setIsExistingCancelModalOpen(false);
             }
           }}
@@ -1634,6 +1668,14 @@ const Contact = ({ recentlyBooked, setRecentlyBooked, onFeedbackClick }) => {
                 <p>
                   <strong>Name:</strong>{" "}
                   {existingAppointmentError.details.Name || "N/A"}
+                </p>
+                <p>
+                  <strong>Phone:</strong>{" "}
+                  {phone || "N/A"}
+                </p>
+                <p>
+                  <strong>Email:</strong>{" "}
+                  {existingAppointmentError.details.Email || "Not provided"}
                 </p>
                 <p>
                   <strong>Date:</strong>{" "}
@@ -1728,18 +1770,25 @@ const Contact = ({ recentlyBooked, setRecentlyBooked, onFeedbackClick }) => {
           {formData && (
             <div className="space-y-3 text-gray-700">
               {/* Basic appointment details */}
-              <div className="grid grid-cols-2 gap-4 text-sm">
-                <div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-y-4 gap-x-4 text-sm">
+                <div className="sm:col-span-2">
                   <p>
                     <strong>Name:</strong>
                   </p>
                   <p className="text-gray-600">{formData.name}</p>
                 </div>
-                <div>
-                  <p>
-                    <strong>Phone:</strong>
-                  </p>
-                  <p className="text-gray-600">0{formData.phone}</p>
+                <div className="sm:col-span-2">
+                  <strong>Contact:</strong>
+                  {formData.phone && (
+                    <p className="text-gray-600">
+                      <FiPhone className="inline mr-1" /> 0{formData.phone}
+                    </p>
+                  )}
+                  {formData.email && (
+                    <p className="text-gray-600 break-words">
+                      <FiMail className="inline mr-1" /> {formData.email}
+                    </p>
+                  )}
                 </div>
                 <div>
                   <p>
@@ -1786,7 +1835,7 @@ const Contact = ({ recentlyBooked, setRecentlyBooked, onFeedbackClick }) => {
                         Total Service Cost:
                       </span>
                       <span className="font-bold text-blue-800">
-                        ₱{(formData.totalPrice || 0).toFixed(2)}
+                        ₱{(formData.totalPrice + 100 || 0).toFixed(2)}
                       </span>
                     </div>
 
@@ -1844,7 +1893,7 @@ const Contact = ({ recentlyBooked, setRecentlyBooked, onFeedbackClick }) => {
                       <p className="text-xs leading-relaxed">
                         Pay ₱100 to secure your appointment. The remaining
                         balance (₱
-                        {Math.max(0, (formData.totalPrice || 0) - 100).toFixed(
+                        {Math.max(0, (formData.totalPrice || 0)).toFixed(
                           2
                         )}
                         ) will be collected at the venue after your service.

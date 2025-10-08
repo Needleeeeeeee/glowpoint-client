@@ -78,6 +78,7 @@ export const addAppointmentWithPayment = async (appointmentData, paymentData) =>
         Total: appointmentData.totalPrice,
         status: "pending",
         date_created: format(new Date(), "yyyy-MM-dd"),
+        payment_id: paymentData.payment_id,
       })
       .select()
       .single();
@@ -107,6 +108,7 @@ export const updateAppointmentWithPayment = async (id, appointmentData, paymentD
         Services: appointmentData.selectedServices,
         Total: appointmentData.totalPrice,
         status: "pending",
+        payment_id: paymentData.payment_id,
       })
       .eq("id", id)
       .select()
@@ -120,24 +122,37 @@ export const updateAppointmentWithPayment = async (id, appointmentData, paymentD
   }
 };
 
-export const addFailedAppointment = async (appointmentData) => {
-  if (!appointmentData) return;
+export const addFailedAppointment = async (appointmentId, appointmentData) => {
+  if (!appointmentData) return; // appointmentData is still required
   try {
     const today = format(new Date(), "yyyy-MM-dd");
-    const { data, error } = await supabase().from("Appointments").insert({
-      Name: appointmentData.name,
-      Phone: appointmentData.phone,
-      Email: appointmentData.email,
-      Date: appointmentData.date,
-      Time: appointmentData.time,
-      Services: appointmentData.selectedServices,
-      Total: appointmentData.totalPrice,
-      status: "failed",
-      date_created: today,
-    });
+    let query;
+    const failedData = {
+      status: 'failed',
+      // You can add more fields to update here, like a 'failure_reason'
+    };
+
+    if (appointmentId) {
+      // If an ID is provided, update the existing appointment
+      query = supabase().from("Appointments").update(failedData).eq("id", appointmentId);
+    } else {
+      // If no ID, create a new failed appointment record (fallback)
+      query = supabase().from("Appointments").insert({
+        Name: appointmentData.name,
+        Phone: appointmentData.phone,
+        Email: appointmentData.email,
+        Date: appointmentData.date,
+        Time: appointmentData.time,
+        Services: appointmentData.selectedServices,
+        Total: appointmentData.totalPrice,
+        status: 'failed',
+        date_created: today,
+      });
+    }
+
+    const { data, error } = await query;
 
     if (error) throw error;
-    console.log("Logged failed appointment", data);
   } catch (error) {
     console.error("Error logging failed appointment:", error);
   }
@@ -176,8 +191,6 @@ export const finalizeCancellationWithPayment = async (appointmentId, paymentData
       .from("Appointments")
       .update({
         status: "failed",
-        paymentStatus: 'pending_verification',
-        paymentAmount: paymentData.amount,
         cancelled_at: new Date().toISOString(),
         cancellation_fee_paid: true
       })

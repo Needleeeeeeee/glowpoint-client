@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { FiCopy, FiCheck, FiInfo, FiSmartphone, FiClock, FiAlertCircle } from 'react-icons/fi';
+import { FiCopy, FiCheck, FiInfo, FiSmartphone, FiClock, FiAlertCircle, FiDownload, FiMail } from 'react-icons/fi';
 import { formatCurrency, validateGCashReference } from './secure-payments.js';
+import gcashQrCode from '../assets/Elaiza GCASH.jpg';
 
 const EnhancedPaymentModal = ({
   isOpen,
@@ -11,32 +12,7 @@ const EnhancedPaymentModal = ({
   const [copied, setCopied] = useState('');
   const [gcashReference, setGcashReference] = useState('');
   const [referenceError, setReferenceError] = useState('');
-  const [timeLeft, setTimeLeft] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
-
-  // Countdown timer
-  useEffect(() => {
-    if (!paymentInstruction) return;
-
-    const updateCountdown = () => {
-      const now = new Date();
-      const expires = new Date(paymentInstruction.expiresAt);
-      const diff = expires - now;
-
-      if (diff <= 0) {
-        setTimeLeft('Expired');
-        return;
-      }
-
-      const hours = Math.floor(diff / (1000 * 60 * 60));
-      const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
-      setTimeLeft(`${hours}h ${minutes}m remaining`);
-    };
-
-    updateCountdown();
-    const interval = setInterval(updateCountdown, 60000);
-    return () => clearInterval(interval);
-  }, [paymentInstruction]);
 
   if (!isOpen || !paymentInstruction) return null;
 
@@ -90,15 +66,11 @@ const EnhancedPaymentModal = ({
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[95vh] overflow-y-auto">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[95vh] overflow-y-auto">
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-gray-200 bg-gradient-to-r from-green-50 to-blue-50">
           <div>
             <h3 className="text-xl font-bold text-gray-800">Complete GCash Payment</h3>
-            <div className="flex items-center text-sm text-gray-600 mt-1">
-              <FiClock className="w-4 h-4 mr-1" />
-              <span>{timeLeft}</span>
-            </div>
           </div>
           <button
             onClick={onClose}
@@ -126,57 +98,71 @@ const EnhancedPaymentModal = ({
             </div>
 
             {/* GCash Details Card */}
-            <div className="bg-white border-2 border-green-200 rounded-xl p-5 shadow-sm">
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <div className="flex-1">
-                    <p className="text-sm text-green-700 font-medium">GCash Number</p>
-                    <p className="text-2xl font-bold text-green-800 font-mono">{recipient.gcashNumber}</p>
-                    <p className="text-sm text-green-600">{recipient.name}</p>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-start">
+              <div className="bg-white border-2 border-green-200 rounded-xl p-5 shadow-sm h-full flex flex-col justify-between">
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex-1">
+                      <p className="text-sm text-green-700 font-medium">GCash Number</p>
+                      <p className="text-2xl font-bold text-green-800 font-mono">{recipient.gcashNumber}</p>
+                      <p className="text-sm text-green-600">{recipient.name}</p>
+                    </div>
+                    <button
+                      onClick={() => copyToClipboard(recipient.gcashNumber, 'gcash')}
+                      className="p-3 bg-green-100 hover:bg-green-200 text-green-600 rounded-lg transition-colors flex items-center justify-center gap-2 w-[90px]"
+                    >
+                      {copied === 'gcash' ? (
+                        <>
+                          <FiCheck className="w-4 h-4" />
+                          <span className="text-sm font-medium">Copied!</span>
+                        </>
+                      ) : (
+                        <>
+                          <FiCopy className="w-4 h-4" />
+                          <span className="text-sm font-medium">Copy</span>
+                        </>
+                      )}
+                    </button>
                   </div>
-                  <button
-                    onClick={() => copyToClipboard(recipient.gcashNumber, 'gcash')}
-                    className="p-3 bg-green-100 hover:bg-green-200 text-green-600 rounded-lg transition-colors flex items-center gap-2"
-                  >
-                    {copied === 'gcash' ? (
-                      <>
-                        <FiCheck className="w-4 h-4" />
-                        <span className="text-sm">Copied!</span>
-                      </>
-                    ) : (
-                      <>
-                        <FiCopy className="w-4 h-4" />
-                        <span className="text-sm">Copy</span>
-                      </>
-                    )}
-                  </button>
-                </div>
 
-                <hr className="border-green-200" />
+                  <hr className="border-green-200" />
 
-                <div className="flex items-center justify-between">
-                  <div className="flex-1">
-                    <p className="text-sm text-yellow-700 font-medium">Reference Number</p>
-                    <p className="text-lg font-bold text-yellow-800 font-mono">{referenceNumber}</p>
-                    <p className="text-xs text-yellow-600">Include this in your message</p>
+                  <div className="flex items-center justify-between">
+                    <div className="flex-1">
+                      <p className="text-sm text-yellow-700 font-medium">Reference Number</p>
+                      <p className="text-lg font-bold text-yellow-800 font-mono">{referenceNumber}</p>
+                      <p className="text-xs text-yellow-600">Include this in your message</p>
+                    </div>
+                    <button
+                      onClick={() => copyToClipboard(referenceNumber, 'ref')}
+                      className="p-3 bg-yellow-100 hover:bg-yellow-200 text-yellow-600 rounded-lg transition-colors flex items-center justify-center gap-2 w-[90px]"
+                    >
+                      {copied === 'ref' ? (
+                        <>
+                          <FiCheck className="w-4 h-4" />
+                          <span className="text-sm font-medium">Copied!</span>
+                        </>
+                      ) : (
+                        <>
+                          <FiCopy className="w-4 h-4" />
+                          <span className="text-sm font-medium">Copy</span>
+                        </>
+                      )}
+                    </button>
                   </div>
-                  <button
-                    onClick={() => copyToClipboard(referenceNumber, 'ref')}
-                    className="p-3 bg-yellow-100 hover:bg-yellow-200 text-yellow-600 rounded-lg transition-colors flex items-center gap-2"
-                  >
-                    {copied === 'ref' ? (
-                      <>
-                        <FiCheck className="w-4 h-4" />
-                        <span className="text-sm">Copied!</span>
-                      </>
-                    ) : (
-                      <>
-                        <FiCopy className="w-4 h-4" />
-                        <span className="text-sm">Copy</span>
-                      </>
-                    )}
-                  </button>
                 </div>
+              </div>
+              <div className="bg-white border-2 border-gray-200 rounded-xl p-2 shadow-sm flex flex-col items-center justify-center">
+                <img src={gcashQrCode} alt="GCash QR Code" className="rounded-lg w-full max-w-[250px] h-auto" />
+                <p className="text-xs text-gray-500 mt-2 text-center">Or scan to pay</p>
+                <a
+                  href={gcashQrCode}
+                  download="Glowpoint-GCash-QR.jpg"
+                  className="mt-3 flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-200 transition-colors border border-gray-300"
+                >
+                  <FiDownload className="w-4 h-4" />
+                  <span>Download QR</span>
+                </a>
               </div>
             </div>
           </div>
@@ -210,14 +196,23 @@ const EnhancedPaymentModal = ({
           {appointmentData && (
             <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
               <h4 className="font-semibold text-blue-800 mb-3">Appointment Summary:</h4>
-              <div className="grid grid-cols-2 gap-3 text-sm">
-                <div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-y-4 gap-x-3 text-sm">
+                <div className="sm:col-span-2">
                   <p className="text-blue-700 font-medium">Name:</p>
                   <p className="text-blue-900">{appointmentData.name}</p>
                 </div>
-                <div>
-                  <p className="text-blue-700 font-medium">Phone:</p>
-                  <p className="text-blue-900">0{appointmentData.phone}</p>
+                <div className="sm:col-span-2">
+                  <p className="text-blue-700 font-medium">Contact:</p>
+                  {appointmentData.phone && (
+                    <p className="text-blue-900">
+                      <FiPhone className="inline mr-1" /> 0{appointmentData.phone}
+                    </p>
+                  )}
+                  {appointmentData.email && (
+                    <p className="text-blue-900 break-words">
+                      <FiMail className="inline mr-1" /> {appointmentData.email}
+                    </p>
+                  )}
                 </div>
                 <div>
                   <p className="text-blue-700 font-medium">Date:</p>
@@ -228,9 +223,19 @@ const EnhancedPaymentModal = ({
                   <p className="text-blue-900">{appointmentData.time}</p>
                 </div>
               </div>
+              {appointmentData.services && appointmentData.services.length > 0 && (
+                <div className="mt-3 pt-3 border-t border-blue-200">
+                  <p className="text-blue-700 font-medium text-sm mb-1">Services:</p>
+                  <ul className="list-disc list-inside text-sm text-blue-800 space-y-1">
+                    {appointmentData.services.map((service, index) => (
+                      <li key={index}>{service}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
               <div className="mt-3 pt-3 border-t border-blue-200">
                 <p className="text-blue-700 font-medium text-sm">Total Service Cost:</p>
-                <p className="text-blue-900 font-bold">{formatCurrency(appointmentData.totalCost || 0)}</p>
+                <p className="text-blue-900 font-bold">{formatCurrency(appointmentData.totalPrice || appointmentData.totalCost || 0)}</p>
               </div>
             </div>
           )}
@@ -291,9 +296,9 @@ const EnhancedPaymentModal = ({
           </button>
           <button
             onClick={handleSubmit}
-            disabled={!gcashReference.trim() || referenceError || isSubmitting || timeLeft === 'Expired'}
+            disabled={!gcashReference.trim() || !!referenceError || isSubmitting}
             className={`flex-1 px-6 py-4 rounded-xl font-semibold transition-colors ${
-              gcashReference.trim() && !referenceError && !isSubmitting && timeLeft !== 'Expired'
+              gcashReference.trim() && !referenceError && !isSubmitting
                 ? 'bg-green-500 hover:bg-green-600 text-white'
                 : 'bg-gray-300 text-gray-500 cursor-not-allowed'
             }`}

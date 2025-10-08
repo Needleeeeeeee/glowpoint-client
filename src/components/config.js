@@ -14,20 +14,20 @@ const getEnvVar = (name, fallback = null) => {
 
 
 export const BUSINESS_CONFIG = {
-  name: getEnvVar('VITE_BUSINESS_NAME', 'Glow Point Beauty'),
+  name: getEnvVar('VITE_APP_BUSINESS_NAME', 'Glow Point Beauty'),
   gcash: {
-    number: getEnvVar('VITE_GCASH_NUMBER'),
-    name: getEnvVar('VITE_GCASH_NAME'),
+    number: getEnvVar('VITE_APP_GCASH_NUMBER'),
+    name: getEnvVar('VITE_APP_GCASH_NAME'),
     qrCodeUrl: getEnvVar('VITE_GCASH_QR_URL', null)
   },
   contact: {
-    phone: getEnvVar('VITE_BUSINESS_PHONE'),
+    phone: getEnvVar('VITE_APP_BUSINESS_PHONE'),
   }
 };
 
 export const PAYMENT_CONFIG = {
-  bookingFee: parseInt(getEnvVar('VITE_BOOKING_FEE', '100')),
-  cancellationFee: parseInt(getEnvVar('VITE_CANCELLATION_FEE', '50')),
+  bookingFee: parseInt(getEnvVar('VITE_APP_BOOKING_FEE', '100')),
+  cancellationFee: parseInt(getEnvVar('VITE_APP_CANCELLATION_FEE', '50')),
   currency: 'PHP'
 };
 

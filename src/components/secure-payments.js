@@ -22,6 +22,7 @@ export const createPaymentInstruction = (appointmentData, amount) => {
     referenceNumber,
     amount,
     currency: PAYMENT_CONFIG.currency,
+    paymentType: amount === PAYMENT_CONFIG.cancellationFee ? 'cancellation' : 'booking',
     recipient: {
       gcashNumber: BUSINESS_CONFIG.gcash.number,
       name: BUSINESS_CONFIG.name,
@@ -31,10 +32,22 @@ export const createPaymentInstruction = (appointmentData, amount) => {
     appointmentData: {
       name: appointmentData.name,
       phone: appointmentData.phone,
+      email: appointmentData.email,
       date: appointmentData.date,
       time: appointmentData.time,
-      services: appointmentData.selectedServices || [],
-      totalCost: appointmentData.totalPrice || 0
+      services: (() => {
+        let services = appointmentData.selectedServices || [];
+        // Handle cases where services might be a JSON string from the database
+        if (typeof services === 'string') {
+          try {
+            services = JSON.parse(services);
+          } catch (e) {
+            console.error("Failed to parse services string in payment instruction:", e);
+            return [services]; // Fallback to an array with the original string
+          }
+        }
+        return Array.isArray(services) ? services : [];
+      })(),      totalCost: appointmentData.totalPrice || 0
     },
     status: 'pending',
     createdAt: new Date().toISOString(),
