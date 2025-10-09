@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { FiCopy, FiCheck, FiInfo, FiSmartphone, FiClock, FiAlertCircle, FiDownload, FiMail } from 'react-icons/fi';
+import { FiCopy, FiCheck, FiInfo, FiSmartphone, FiClock, FiAlertCircle, FiDownload, FiMail,FiPhone } from 'react-icons/fi';
 import { formatCurrency, validateGCashReference } from './secure-payments.js';
 import gcashQrCode from '../assets/Elaiza GCASH.jpg';
 
@@ -205,7 +205,7 @@ const EnhancedPaymentModal = ({
                   <p className="text-blue-700 font-medium">Contact:</p>
                   {appointmentData.phone && (
                     <p className="text-blue-900">
-                      <FiPhone className="inline mr-1" /> 0{appointmentData.phone}
+                      <FiPhone className="inline mr-1" /> {appointmentData.phone}
                     </p>
                   )}
                   {appointmentData.email && (

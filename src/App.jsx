@@ -23,14 +23,15 @@ function App() {
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
     if (urlParams.get('joinQueue') === 'true') {
-      if (!queueState.userQueuePosition) {
+      const qrCode = urlParams.get('qrCode');
+      if (!queueState.userQueuePosition && qrCode) {
         setShowQueue(true);
-        queueState.handleAutoJoinQueue();
+        queueState.setScannedQrCode(qrCode);
       }
-      const newUrl = `${window.location.pathname}${window.location.hash}`;
+      const newUrl = `${window.location.pathname}${window.location.search.replace(/([?&])(joinQueue|qrCode)=[^&]*/g, '').replace(/^&/, '?') || window.location.hash}`;
       window.history.replaceState({}, '', newUrl);
     }
-  }, [queueState.userQueuePosition, queueState.handleAutoJoinQueue]);
+  }, [queueState.userQueuePosition, queueState.setScannedQrCode]);
 
   const [isFeedbackModalOpen, setIsFeedbackModalOpen] = useState(false);
   const [recentlyBooked, setRecentlyBooked] = useState(null);

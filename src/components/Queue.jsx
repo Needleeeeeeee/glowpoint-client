@@ -4,7 +4,7 @@ import { toast } from 'react-toastify';
 import { validateEmail, sanitizePhone } from './actions';
 
 export const QueueModule = ({ isVisible, onClose, queueState }) => {
-  const { queue, currentServing, loading, userQueuePosition, error, handleAutoJoinQueue } = queueState;
+  const { queue, currentServing, loading, userQueuePosition, error, joinQueue, scannedQrCode } = queueState;
   const [phone, setPhone] = useState('');
   const [email, setEmail] = useState('');
   const [wantsSms, setWantsSms] = useState(false);
@@ -21,7 +21,7 @@ export const QueueModule = ({ isVisible, onClose, queueState }) => {
       toast.error('Please enter a valid email address for email reminders.');
       return;
     }
-    await handleAutoJoinQueue({ phone: wantsSms ? phone : null, email: wantsEmail ? email : null });
+    await joinQueue({ phone: wantsSms ? phone : null, email: wantsEmail ? email : null });
   };
 
   return (
@@ -88,7 +88,7 @@ export const QueueModule = ({ isVisible, onClose, queueState }) => {
           ) : (
             <div className="bg-white rounded-xl shadow-lg p-6 mb-6">
               <div className="text-center">
-                <h3 className="text-xl font-semibold mb-4">Join the Queue</h3>
+                <h3 className="text-xl font-semibold mb-4">{scannedQrCode ? 'Confirm Your Entry' : 'Join the Queue'}</h3>
                 <div className="space-y-4 my-6 text-left max-w-sm mx-auto">
                   {/* SMS Reminder */}
                   <div>
@@ -146,7 +146,7 @@ export const QueueModule = ({ isVisible, onClose, queueState }) => {
                   disabled={loading}
                   className="bg-blue-600 text-white px-8 py-3 rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 w-full max-w-sm"
                 >
-                  {loading ? 'Joining...' : 'Join the Queue Now'}
+                  {loading ? 'Joining...' : 'Join Queue'}
                 </button>
               </div>
             </div>

@@ -14,6 +14,7 @@ export const useQueue = () => {
   const [queue, setQueue] = useState([]);
   const [currentServing, setCurrentServing] = useState(0);
   const [loading, setLoading] = useState(false);
+  const [scannedQrCode, setScannedQrCode] = useState(null);
 
   const [userQueuePosition, setUserQueuePosition] = useState(() => {
     const cookieData = Cookies.get(USER_QUEUE_POSITION_COOKIE);
@@ -83,14 +84,16 @@ export const useQueue = () => {
     }
   }, []);
 
-  const handleJoinQueue = async (qrCode, reminderData = {}) => {
+  const handleJoinQueue = async (reminderData = {}) => {
+    const qrCodeToJoin = scannedQrCode || generateSampleQR();
     setLoading(true);
     setError(null);
 
     try {
-      const result = await joinQueue(qrCode, null, reminderData);
+      const result = await joinQueue(qrCodeToJoin, null, reminderData);
       if (result.success) {
         setUserQueuePosition(result.data);
+        setScannedQrCode(null); // Clear QR code after joining
         await fetchQueue();
         return result.data;
       } else {
@@ -105,13 +108,12 @@ export const useQueue = () => {
     }
   };
 
-  const handleAutoJoinQueue = async (reminderData = {}) => {
+  const handleAutoJoinQueue = (reminderData = {}) => {
     if (userQueuePosition) {
       // Already in queue, do nothing.
       return;
     }
-    const qrCode = generateSampleQR();
-    return handleJoinQueue(qrCode, reminderData);
+    return handleJoinQueue(reminderData);
   };
 
   useEffect(() => {
@@ -139,6 +141,8 @@ export const useQueue = () => {
     userQueuePosition,
     error,
     joinQueue: handleJoinQueue,
+    setScannedQrCode,
+    scannedQrCode,
     fetchQueue,
     handleAutoJoinQueue,
   };
