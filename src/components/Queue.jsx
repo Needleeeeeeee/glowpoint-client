@@ -13,6 +13,10 @@ export const QueueModule = ({ isVisible, onClose, queueState }) => {
   if (!isVisible) return null;
 
   const handleJoin = async () => {
+    if (!wantsSms && !wantsEmail) {
+      toast.error('Please select at least one reminder method to join the queue.');
+      return;
+    }
     if (wantsSms && sanitizePhone(phone).length < 10) {
       toast.error('Please enter a valid phone number for SMS reminders.');
       return;
@@ -67,7 +71,7 @@ export const QueueModule = ({ isVisible, onClose, queueState }) => {
             <div className="bg-green-50 border border-green-200 rounded-xl p-6 mb-6">
               <div className="text-center">
                 <h3 className="text-xl font-semibold text-green-800 mb-2">
-                  You're in the Queue! 🎉
+                  You're in the Queue!
                 </h3>
                 <div className="space-y-2">
                   <p className="text-green-700">
@@ -143,7 +147,7 @@ export const QueueModule = ({ isVisible, onClose, queueState }) => {
                 </div>
                 <button
                   onClick={handleJoin}
-                  disabled={loading}
+                  disabled={loading || (!wantsSms && !wantsEmail)}
                   className="bg-blue-600 text-white px-8 py-3 rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 w-full max-w-sm"
                 >
                   {loading ? 'Joining...' : 'Join Queue'}
