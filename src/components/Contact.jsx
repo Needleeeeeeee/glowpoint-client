@@ -492,13 +492,17 @@ const Contact = ({ recentlyBooked, setRecentlyBooked, onFeedbackClick }) => {
     setError({});
     const finalSanitizedName = sanitizeName(name);
     const normalizedPhone = normalizePhoneNumber(phone);
+
+    // Convert services array to comma-separated string
+    const servicesString = selectedServices.join(", ");
+
     setFormData({
       name: finalSanitizedName,
       phone: normalizedPhone,
       email,
       date,
       time,
-      selectedServices,
+      selectedServices: servicesString, // Now a string instead of array
       totalPrice,
     });
     if (name !== finalSanitizedName) {
@@ -706,7 +710,16 @@ const Contact = ({ recentlyBooked, setRecentlyBooked, onFeedbackClick }) => {
 
     // Ensure services are always an array
     const services = recentlyBooked.Services;
-    const servicesArray = Array.isArray(services) ? services : (typeof services === 'string' ? [services] : []);
+    let servicesArray;
+
+    if (typeof services === "string") {
+      // Split comma-separated string back to array
+      servicesArray = services.split(", ").filter((s) => s.trim());
+    } else if (Array.isArray(services)) {
+      servicesArray = services;
+    } else {
+      servicesArray = [];
+    }
     setSelectedServices(servicesArray);
 
     // Set the form to reschedule mode
@@ -1381,19 +1394,22 @@ const Contact = ({ recentlyBooked, setRecentlyBooked, onFeedbackClick }) => {
                   <strong>Services:</strong>
                 </p>
                 <ul className="list-disc list-inside ml-4">
-                  {recentlyBooked.Services ? (
-                    Array.isArray(recentlyBooked.Services) ? (
-                      recentlyBooked.Services.map((service, index) => (
+                  {(() => {
+                    const services = recentlyBooked.Services;
+                    if (typeof services === "string") {
+                      return services
+                        .split(", ")
+                        .map((service, index) => (
+                          <li key={index}>{service}</li>
+                        ));
+                    } else if (Array.isArray(services)) {
+                      return services.map((service, index) => (
                         <li key={index}>{service}</li>
-                      ))
-                    ) : typeof recentlyBooked.Services === "string" ? (
-                      <li>{recentlyBooked.Services}</li>
-                    ) : (
-                      <li>Services not available</li>
-                    )
-                  ) : (
-                    <li>No services listed</li>
-                  )}
+                      ));
+                    } else {
+                      return <li>No services listed</li>;
+                    }
+                  })()}
                 </ul>
               </div>
               <p className="pt-2 font-bold text-base text-right">
@@ -1481,23 +1497,23 @@ const Contact = ({ recentlyBooked, setRecentlyBooked, onFeedbackClick }) => {
                   <p>
                     <strong>Services:</strong>
                   </p>
-                  <ul className="list-disc list-inside ml-4">
-                    {existingAppointmentError.details.Services ? (
-                      Array.isArray(
-                        existingAppointmentError.details.Services
-                      ) ? (
-                        existingAppointmentError.details.Services.map(
-                          (service, index) => <li key={index}>{service}</li>
-                        )
-                      ) : typeof existingAppointmentError.details.Services ===
-                        "string" ? (
-                        <li>{existingAppointmentError.details.Services}</li>
-                      ) : (
-                        <li>Services not available</li>
-                      )
-                    ) : (
-                      <li>No services listed</li>
-                    )}
+                <ul className="list-disc list-inside ml-4">
+                  {(() => {
+                    const services = existingAppointmentError.details.Services;
+                    if (typeof services === "string") {
+                      return services
+                        .split(", ")
+                        .map((service, index) => (
+                          <li key={index}>{service}</li>
+                        ));
+                    } else if (Array.isArray(services)) {
+                      return services.map((service, index) => (
+                        <li key={index}>{service}</li>
+                      ));
+                    } else {
+                      return <li>Services not available</li>;
+                    }
+                  })()}
                   </ul>
                 </div>
                 <p className="pt-2 font-bold text-base text-right">
@@ -1580,12 +1596,14 @@ const Contact = ({ recentlyBooked, setRecentlyBooked, onFeedbackClick }) => {
                   </p>
                   <ul className="list-disc list-inside ml-4">
                     {recentlyBooked.Services ? (
-                      Array.isArray(recentlyBooked.Services) ? (
-                        recentlyBooked.Services.map((service, index) => (
-                          <li key={index}>{service}</li>
-                        ))
+                      typeof recentlyBooked.Services === "string" ? (
+                        recentlyBooked.Services.split(", ").map(
+                          (service, index) => <li key={index}>{service}</li>
+                        )
                       ) : (
-                        <li>{recentlyBooked.Services}</li>
+                        Array.isArray(recentlyBooked.Services) ?
+                          recentlyBooked.Services.map((service, index) => <li key={index}>{service}</li>)
+                          : <li>{recentlyBooked.Services}</li>
                       )
                     ) : (
                       <li>No services listed</li>
@@ -1697,22 +1715,23 @@ const Contact = ({ recentlyBooked, setRecentlyBooked, onFeedbackClick }) => {
                     <strong>Services:</strong>
                   </p>
                   <ul className="list-disc list-inside ml-4 text-sm">
-                    {existingAppointmentError.details.Services ? (
-                      Array.isArray(
-                        existingAppointmentError.details.Services
-                      ) ? (
-                        existingAppointmentError.details.Services.map(
-                          (service, index) => <li key={index}>{service}</li>
-                        )
-                      ) : typeof existingAppointmentError.details.Services ===
-                        "string" ? (
-                        <li>{existingAppointmentError.details.Services}</li>
-                      ) : (
-                        <li>Services not available</li>
-                      )
-                    ) : (
-                      <li>No services listed</li>
-                    )}
+                    {(() => {
+                      const services =
+                        existingAppointmentError.details.Services;
+                      if (typeof services === "string") {
+                        return services
+                          .split(", ")
+                          .map((service, index) => (
+                            <li key={index}>{service}</li>
+                          ));
+                      } else if (Array.isArray(services)) {
+                        return services.map((service, index) => (
+                          <li key={index}>{service}</li>
+                        ));
+                      } else {
+                        return <li>Services not available</li>;
+                      }
+                    })()}
                   </ul>
                 </div>
                 <p className="pt-2 font-bold">
@@ -1813,8 +1832,14 @@ const Contact = ({ recentlyBooked, setRecentlyBooked, onFeedbackClick }) => {
                 <p className="font-medium mb-2">Selected Services:</p>
                 <div className="max-h-32 overflow-y-auto">
                   <ul className="list-disc list-inside ml-2 text-sm space-y-1">
-                    {formData.selectedServices.map((service, index) => (
-                      <li key={index} className="text-gray-600">
+                    {(typeof formData.selectedServices === "string"
+                      ? formData.selectedServices.split(", ")
+                      : formData.selectedServices
+                    ).map((service, index) => (
+                      <li
+                        key={index}
+                        className="text-gray-600"
+                      >
                         {service}
                       </li>
                     ))}
