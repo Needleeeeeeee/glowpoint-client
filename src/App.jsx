@@ -75,14 +75,12 @@ function App() {
     checkRecentAppointment();
   }, []);
 
-  const showFeedbackButton = recentlyBooked?.status === "success";
 
   return (
     <div>
       <div>
         <Navbar
           onFeedbackClick={handleOpenFeedbackModal}
-          showFeedbackButton={showFeedbackButton}
         />
         <Banner />
         <About />
@@ -94,7 +92,6 @@ function App() {
         />
         <Footer
           onFeedbackClick={handleOpenFeedbackModal}
-          showFeedbackButton={showFeedbackButton}
         />
 
         <Feedback

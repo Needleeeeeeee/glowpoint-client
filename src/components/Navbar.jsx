@@ -11,7 +11,7 @@ import {
 import { FaCalendar, FaScissors, FaPhone } from "react-icons/fa6";
 import logo from "../assets/EBL_Logo_Cropped.jpg";
 
-const Navbar = ({ onFeedbackClick, showFeedbackButton }) => {
+const Navbar = ({ onFeedbackClick }) => {
   const [navShadow, setNavShadow] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
@@ -99,7 +99,7 @@ const Navbar = ({ onFeedbackClick, showFeedbackButton }) => {
                     <span className="absolute -bottom-1 left-0 w-0 h-[2px] bg-pink-700 transition-all duration-300 group-hover:w-full"></span>
                   </Link>
 
-                  {showFeedbackButton && (
+
                     <button
                       onClick={onFeedbackClick}
                       className="flex items-center cursor-pointer text-gray-800 hover:text-pink-700 transition-all duration-300 relative group font-[Poppins] font-medium text-sm xl:text-base hover:scale-105 whitespace-nowrap"
@@ -108,11 +108,11 @@ const Navbar = ({ onFeedbackClick, showFeedbackButton }) => {
                       Feedback
                       <span className="absolute -bottom-1 left-0 w-0 h-[2px] bg-pink-700 transition-all duration-300 group-hover:w-full"></span>
                     </button>
-                  )}
+
                 </div>
               </div>
 
-              {/*Right side - Book btn and mobile menu */}
+              {/*Book btn and mobile menu */}
               <div className="flex items-center space-x-4 flex-shrink-0">
                 <div className="hidden lg:flex items-center">
                   <Link
