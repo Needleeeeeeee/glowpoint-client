@@ -11,7 +11,7 @@ const copyToClipboard = async (text) => {
   }
 };
 
-const Footer = ({ onFeedbackClick }) => {
+const Footer = ({ onFeedbackClick, showFeedbackButton }) => {
   return (
     <footer id="footer" className="bg-white border-t border-gray-100">
       <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-12">
@@ -73,6 +73,7 @@ const Footer = ({ onFeedbackClick }) => {
                 </li>
               ))}
 
+              {showFeedbackButton && (
                 <li>
                   <button
                     onClick={onFeedbackClick}
@@ -82,7 +83,7 @@ const Footer = ({ onFeedbackClick }) => {
                     Leave Feedback
                   </button>
                 </li>
-
+              )}
             </ul>
           </div>
 

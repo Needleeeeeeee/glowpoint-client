@@ -10,7 +10,7 @@ import Services from "./components/Services";
 import Contact from "./components/Contact";
 import Footer from "./components/Footer";
 import Feedback from "./components/Feedback";
-import { QueueModule } from './components/Queue.jsx';
+import { QueueModule } from "./components/Queue.jsx";
 import { useQueue } from "./hooks/queue.js";
 import "react-toastify/dist/ReactToastify.css";
 import { FaClipboardList } from "react-icons/fa6";
@@ -22,14 +22,18 @@ function App() {
 
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
-    if (urlParams.get('joinQueue') === 'true') {
-      const qrCode = urlParams.get('qrCode');
+    if (urlParams.get("joinQueue") === "true") {
+      const qrCode = urlParams.get("qrCode");
       if (!queueState.userQueuePosition && qrCode) {
         setShowQueue(true);
         queueState.setScannedQrCode(qrCode);
       }
-      const newUrl = `${window.location.pathname}${window.location.search.replace(/([?&])(joinQueue|qrCode)=[^&]*/g, '').replace(/^&/, '?') || window.location.hash}`;
-      window.history.replaceState({}, '', newUrl);
+      const newUrl = `${window.location.pathname}${
+        window.location.search
+          .replace(/([?&])(joinQueue|qrCode)=[^&]*/g, "")
+          .replace(/^&/, "?") || window.location.hash
+      }`;
+      window.history.replaceState({}, "", newUrl);
     }
   }, [queueState.userQueuePosition, queueState.setScannedQrCode]);
 
@@ -38,7 +42,6 @@ function App() {
 
   const handleOpenFeedbackModal = () => setIsFeedbackModalOpen(true);
   const handleCloseFeedbackModal = () => setIsFeedbackModalOpen(false);
-
 
   useEffect(() => {
     const checkRecentAppointment = async () => {
@@ -74,12 +77,13 @@ function App() {
     };
     checkRecentAppointment();
   }, []);
-
+  const showFeedbackButton = !!recentlyBooked;
 
   return (
     <div>
       <div>
         <Navbar
+          showFeedbackButton={showFeedbackButton}
           onFeedbackClick={handleOpenFeedbackModal}
         />
         <Banner />
@@ -91,6 +95,7 @@ function App() {
           onFeedbackClick={handleOpenFeedbackModal}
         />
         <Footer
+          showFeedbackButton={showFeedbackButton}
           onFeedbackClick={handleOpenFeedbackModal}
         />
 
