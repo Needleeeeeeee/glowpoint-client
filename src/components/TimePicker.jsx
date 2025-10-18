@@ -92,6 +92,7 @@ const TimePicker = ({
   maxTime,
   increment,
   disabledTimes = [],
+  appointmentDuration = 60, // Default to 60 minutes if not provided
 }) => {
   const [internalHour, setInternalHour] = useState(null);
   const [internalMinute, setInternalMinute] = useState(null);
@@ -132,21 +133,36 @@ const TimePicker = ({
   }, [value, minTime]);
 
   const isMinuteDisabled = useCallback(
-    (minute) => {
-      const [minHour, minMinute] = minTime.split(":").map(Number);
-      const [maxHour, maxMinute] = maxTime.split(":").map(Number);
-      if (internalHour === minHour && minute < minMinute) return true;
-      if (internalHour === maxHour && minute > maxMinute) return true;
+  (minute) => {
+    const [minHour, minMinute] = minTime.split(":").map(Number);
+    const [maxHour, maxMinute] = maxTime.split(":").map(Number);
 
-      const timeString = `${String(internalHour).padStart(2, "0")}:${String(
-        minute
+    if (internalHour === minHour && minute < minMinute) return true;
+    if (internalHour === maxHour && minute > maxMinute) return true;
+
+    // Check if the proposed appointment slot overlaps with any disabled times
+    const timeToMinutes = (h, m) => h * 60 + m;
+    const startMinutes = timeToMinutes(internalHour, minute);
+    const endMinutes = startMinutes + appointmentDuration;
+
+    // Iterate through all 15-minute increments of the proposed appointment
+    for (let m = startMinutes; m < endMinutes; m += increment) {
+      const currentHour = Math.floor(m / 60);
+      const currentMinute = m % 60;
+      const timeString = `${String(currentHour).padStart(2, "0")}:${String(
+        currentMinute
       ).padStart(2, "0")}`;
-      if (disabledTimes.includes(timeString)) return true;
 
-      return false;
-    },
-    [internalHour, minTime, maxTime, disabledTimes]
-  );
+      // FIX: Check if this time string exists in disabledTimes array
+      if (disabledTimes.includes(timeString)) {
+        console.log(`Blocking time ${timeString} because it's disabled`);
+        return true; // This slot overlaps with a disabled time
+      }
+    }
+    return false;
+  },
+  [internalHour, minTime, maxTime, disabledTimes, appointmentDuration, increment]
+);
 
   useEffect(() => {
     if (internalHour === null || internalMinute === null) return;

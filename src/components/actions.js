@@ -244,9 +244,21 @@ export const fetchFullyBookedDates = async () => {
 export const fetchBookedTimeSlots = async (date) => {
   if (!date) return [];
   try {
-    const { data, error } = await supabase().from("Appointments").select("Time").eq("Date", date).in("status", ["pending", "confirmed"]);
+    const { data, error } = await supabase()
+      .from("Appointments")
+      .select("Time, Services")
+      .eq("Date", date)
+      .in("status", ["pending", "verified", "confirmed", "assigned"]);
+
     if (error) throw error;
-    return data ? data.map(slot => slot.Time) : [];
+
+    // Normalize times to HH:MM format (strip seconds if present)
+    const normalizedData = (data || []).map(appointment => ({
+      ...appointment,
+      Time: appointment.Time ? appointment.Time.substring(0, 5) : appointment.Time
+    }));
+
+    return normalizedData;
   } catch (error) {
     console.error("Error fetching booked time slots:", error);
     return [];

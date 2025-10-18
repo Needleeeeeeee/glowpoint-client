@@ -12,6 +12,14 @@ const copyToClipboard = async (text) => {
 };
 
 const Footer = ({ onFeedbackClick, showFeedbackButton }) => {
+  const links = [
+    { name: "Home", href: "#" },
+    { name: "About", href: "#about" },
+    { name: "Services", href: "#services" },
+    { name: "Book Appointment", href: "#contact" },
+    ...(showFeedbackButton ? [{ name: "Leave Feedback", href: null, isButton: true }] : []),
+  ];
+
   return (
     <footer id="footer" className="bg-white border-t border-gray-100">
       <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-12">
@@ -56,34 +64,27 @@ const Footer = ({ onFeedbackClick, showFeedbackButton }) => {
               Explore
             </h4>
             <ul className="space-y-3">
-              {[
-                { name: "Home", href: "#" },
-                { name: "About", href: "#about" },
-                { name: "Services", href: "#services" },
-                { name: "Book Appointment", href: "#contact" },
-              ].map((link) => (
+              {links.map((link) => (
                 <li key={link.name}>
-                  <a
-                    href={link.href}
-                    className="text-amber-600 hover:text-amber-800 transition-all flex items-center justify-center group text-sm font-medium"
-                  >
-                    <span className="bg-amber-200 group-hover:bg-amber-300 w-1.5 h-1.5 rounded-full mr-2 transition-colors" />
-                    {link.name}
-                  </a>
+                  {link.isButton ? (
+                    <button
+                      onClick={onFeedbackClick}
+                      className="text-amber-600 hover:text-amber-800 transition-all flex items-center justify-center group text-sm font-medium w-full"
+                    >
+                      <span className="bg-amber-200 group-hover:bg-amber-300 w-1.5 h-1.5 rounded-full mr-2 transition-colors" />
+                      {link.name}
+                    </button>
+                  ) : (
+                    <a
+                      href={link.href}
+                      className="text-amber-600 hover:text-amber-800 transition-all flex items-center justify-center group text-sm font-medium"
+                    >
+                      <span className="bg-amber-200 group-hover:bg-amber-300 w-1.5 h-1.5 rounded-full mr-2 transition-colors" />
+                      {link.name}
+                    </a>
+                  )}
                 </li>
               ))}
-
-              {showFeedbackButton && (
-                <li>
-                  <button
-                    onClick={onFeedbackClick}
-                    className="text-amber-600 hover:text-amber-800 transition-all flex items-center justify-center group text-sm font-medium"
-                  >
-                    <span className="bg-amber-200 group-hover:bg-amber-300 w-1.5 h-1.5 rounded-full mr-2 transition-colors" />
-                    Leave Feedback
-                  </button>
-                </li>
-              )}
             </ul>
           </div>
 

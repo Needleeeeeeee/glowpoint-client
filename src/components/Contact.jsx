@@ -1,5 +1,5 @@
 import Popover from "@mui/material/Popover";
-import { addDays, format } from "date-fns";
+import { addDays, format, isMatch, parse } from "date-fns";
 import Cookies from "js-cookie";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "react-toastify";
@@ -21,7 +21,7 @@ import {
 } from "./actions.js";
 import Modal from "./Modal.jsx";
 import TimePicker from "./TimePicker.jsx";
-
+import DatePicker from "./DatePicker.jsx";
 import {
   FiAlertCircle,
   FiCalendar,
@@ -101,6 +101,7 @@ const Contact = ({ recentlyBooked, setRecentlyBooked, onFeedbackClick }) => {
   const [isLoadingServices, setIsLoadingServices] = useState(true);
   const [totalPrice, setTotalPrice] = useState(0);
   const [fullyBookedDates, setFullyBookedDates] = useState([]);
+  const [totalDuration, setTotalDuration] = useState(0);
   const [bookedSlots, setBookedSlots] = useState([]);
   const [isLoadingSlots, setIsLoadingSlots] = useState(false);
 
@@ -236,13 +237,45 @@ const Contact = ({ recentlyBooked, setRecentlyBooked, onFeedbackClick }) => {
     setTotalPrice(calculateTotalPrice());
   }, [selectedServices, calculateTotalPrice]);
 
+  useEffect(() => {
+    const calculateTotalDuration = () => {
+      let duration = 0;
+      const allServicesList = Object.values(allServices).flat();
+      selectedServices.forEach((serviceName) => {
+        const service = allServicesList.find(
+          (s) => `${s.service} - ${titleCase(s.category)}` === serviceName
+        );
+        if (service && service.duration) {
+          duration += service.duration;
+        }
+      });
+      setTotalDuration(duration);
+    };
+    calculateTotalDuration();
+  }, [selectedServices, allServices]);
+
   const disabledTimes = useMemo(() => {
     if (!bookedSlots.length) {
       return [];
     }
 
+    const allServicesList = Object.values(allServices).flat();
+
+    const getDurationForBookedAppointment = (servicesString) => {
+      if (!servicesString || typeof servicesString !== "string") return 60; // Fallback duration
+      const serviceNames = servicesString.split(", ");
+      let totalDuration = 0;
+      serviceNames.forEach((serviceName) => {
+        const service = allServicesList.find(
+          (s) => `${s.service} - ${titleCase(s.category)}` === serviceName
+        );
+        if (service && service.duration) {
+          totalDuration += service.duration;
+        }
+      });
+      return totalDuration > 0 ? totalDuration : 60; // Fallback if no services found
+    };
     const disabled = new Set();
-    const blockDuration = 60; // 1 hour in minutes
 
     const timeToMinutes = (t) => {
       if (!t) return 0;
@@ -250,25 +283,24 @@ const Contact = ({ recentlyBooked, setRecentlyBooked, onFeedbackClick }) => {
       return hours * 60 + minutes;
     };
 
-    bookedSlots.forEach((slot) => {
-      const startMinutes = timeToMinutes(slot);
-      const endMinutes = startMinutes + blockDuration;
+    bookedSlots.forEach((appointment) => {
+      const appointmentDuration = getDurationForBookedAppointment(
+        appointment.Services
+      );
+      const startMinutes = timeToMinutes(appointment.Time);
+      const endMinutes = startMinutes + appointmentDuration;
       const increment = 15;
-      const minTimeMinutes = timeToMinutes("11:00");
-      const maxTimeMinutes = timeToMinutes("18:00");
 
-      for (let m = minTimeMinutes; m <= maxTimeMinutes; m += increment) {
-        if (m >= startMinutes && m < endMinutes) {
-          const hours = Math.floor(m / 60);
-          const minutes = m % 60;
-          const timeString = `${String(hours).padStart(2, "0")}:${String(
-            minutes
-          ).padStart(2, "0")}`;
-          disabled.add(timeString);
-        }
+      // Iterate from the start of the booked slot until its end time
+      for (let m = startMinutes; m < endMinutes; m += increment) {
+        const hours = Math.floor(m / 60);
+        const minutes = m % 60;
+        const timeString = `${String(hours).padStart(2, "0")}:${String(
+          minutes
+        ).padStart(2, "0")}`;
+        disabled.add(timeString);
       }
     });
-
     return Array.from(disabled);
   }, [bookedSlots]);
 
@@ -487,6 +519,13 @@ const Contact = ({ recentlyBooked, setRecentlyBooked, onFeedbackClick }) => {
     const validationErrors = validateForm();
     if (Object.keys(validationErrors).length) {
       setError(validationErrors);
+      if (validationErrors.services) {
+        toast.error("Please select at least one service before booking.");
+      } else {
+        toast.error(
+          "Please fill in all required fields before booking an appointment."
+        );
+      }
       return;
     }
     setError({});
@@ -532,7 +571,7 @@ const Contact = ({ recentlyBooked, setRecentlyBooked, onFeedbackClick }) => {
         referenceNumber: paymentInstruction.referenceNumber,
         gcashReference: gcashReference,
         amount: paymentInstruction.amount,
-        payment_id: gcashReference
+        payment_id: gcashReference,
       };
 
       let result;
@@ -569,10 +608,16 @@ const Contact = ({ recentlyBooked, setRecentlyBooked, onFeedbackClick }) => {
           result.error.message ||
             "An error occurred while saving your appointment."
         );
-        await addFailedAppointment(paymentInstruction.paymentType === "cancellation" ? cancellationData?.appointmentId : null, { // Pass appointmentId for cancellations
-          ...(formData || cancellationData),
-          reason: result.error.message,
-        });
+        await addFailedAppointment(
+          paymentInstruction.paymentType === "cancellation"
+            ? cancellationData?.appointmentId
+            : null,
+          {
+            // Pass appointmentId for cancellations
+            ...(formData || cancellationData),
+            reason: result.error.message,
+          }
+        );
       } else {
         toast.success(successMessage);
         if (paymentInstruction.paymentType !== "cancellation" && result.data) {
@@ -588,7 +633,6 @@ const Contact = ({ recentlyBooked, setRecentlyBooked, onFeedbackClick }) => {
             { expires: new Date(appointmentDetails.Date) }
           );
           setRecentlyBooked(appointmentDetails);
-
         }
         // Reset form state
         setName("");
@@ -658,7 +702,8 @@ const Contact = ({ recentlyBooked, setRecentlyBooked, onFeedbackClick }) => {
         email: appointmentData.Email || appointmentData.email,
         date: appointmentData.Date || appointmentData.date,
         time: appointmentData.Time || appointmentData.time,
-        selectedServices: appointmentData.Services || appointmentData.selectedServices || [],
+        selectedServices:
+          appointmentData.Services || appointmentData.selectedServices || [],
         totalPrice: appointmentData.Total || appointmentData.totalPrice || 0,
       };
 
@@ -669,7 +714,8 @@ const Contact = ({ recentlyBooked, setRecentlyBooked, onFeedbackClick }) => {
       };
 
       const paymentResult = await processGCashPayment(
-        normalizedCancelData, PAYMENT_CONFIG.cancellationFee
+        normalizedCancelData,
+        PAYMENT_CONFIG.cancellationFee
       );
 
       if (paymentResult.success) {
@@ -1135,7 +1181,9 @@ const Contact = ({ recentlyBooked, setRecentlyBooked, onFeedbackClick }) => {
                 placeholder="e.g., 09171234567"
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
-                className={`w-full pl-12 pr-4 py-4 rounded-xl border-2 border-yellow-100 focus:border-yellow-400 focus:ring-2 focus:ring-yellow-200 transition-all duration-300 placeholder-yellow-300 text-yellow-700 font-medium ${!wantsSms ? 'bg-gray-100 cursor-not-allowed' : ''}`}
+                className={`w-full pl-12 pr-4 py-4 rounded-xl border-2 border-yellow-100 focus:border-yellow-400 focus:ring-2 focus:ring-yellow-200 transition-all duration-300 placeholder-yellow-300 text-yellow-700 font-medium ${
+                  !wantsSms ? "bg-gray-100 cursor-not-allowed" : ""
+                }`}
               />
               {errors.phone && (
                 <p className=" text-red-400 text-sm mt-1 ml-2 flex items-center gap-1">
@@ -1154,7 +1202,9 @@ const Contact = ({ recentlyBooked, setRecentlyBooked, onFeedbackClick }) => {
                 placeholder="Email Address"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className={`w-full pl-12 pr-4 py-4 rounded-xl border-2 border-yellow-100 focus:border-yellow-400 focus:ring-2 focus:ring-yellow-200 transition-all duration-300 placeholder-yellow-300 text-yellow-700 font-medium ${!wantsEmail ? 'bg-gray-100 cursor-not-allowed' : ''}`}
+                className={`w-full pl-12 pr-4 py-4 rounded-xl border-2 border-yellow-100 focus:border-yellow-400 focus:ring-2 focus:ring-yellow-200 transition-all duration-300 placeholder-yellow-300 text-yellow-700 font-medium ${
+                  !wantsEmail ? "bg-gray-100 cursor-not-allowed" : ""
+                }`}
               />
               {errors.email && (
                 <p className="text-red-400 text-sm mt-1 ml-2 flex items-center gap-1">
@@ -1164,27 +1214,14 @@ const Contact = ({ recentlyBooked, setRecentlyBooked, onFeedbackClick }) => {
             </div>
 
             {/* Date */}
-            <div className="relative group">
-              <FiCalendar className="absolute left-4 top-4 text-yellow-400 text-xl" />
-              <input
-                disabled={!!existingAppointmentError && !rescheduleData}
-                type="date"
-                min={minDate}
-                value={date}
-                onChange={(e) => setDate(e.target.value)}
-                className={`w-full pl-12 pr-4 py-4 rounded-xl border-2 border-yellow-100 focus:border-yellow-400 focus:ring-2 focus:ring-yellow-200 transition-all duration-300 placeholder-yellow-300 text-yellow-700 font-medium ${
-                  !!existingAppointmentError && !rescheduleData
-                    ? "bg-gray-100 cursor-not-allowed"
-                    : ""
-                }`}
-              />
-              {errors.date && (
-                <p className=" text-red-400 text-sm mt-1 ml-2 flex items-center gap-1">
-                  <FiInfo className="inline" />
-                  {errors.date}
-                </p>
-              )}
-            </div>
+
+            <DatePicker
+              value={date}
+              onChange={setDate}
+              minDate={minDate}
+              disabled={!!existingAppointmentError && !rescheduleData}
+              errors={errors.date}
+            />
 
             {/* Time */}
             <div className="relative group">
@@ -1240,6 +1277,7 @@ const Contact = ({ recentlyBooked, setRecentlyBooked, onFeedbackClick }) => {
                   maxTime="19:00"
                   increment={15}
                   disabledTimes={disabledTimes}
+                  appointmentDuration={totalDuration}
                 />
               </Popover>
             </div>
@@ -1497,23 +1535,24 @@ const Contact = ({ recentlyBooked, setRecentlyBooked, onFeedbackClick }) => {
                   <p>
                     <strong>Services:</strong>
                   </p>
-                <ul className="list-disc list-inside ml-4">
-                  {(() => {
-                    const services = existingAppointmentError.details.Services;
-                    if (typeof services === "string") {
-                      return services
-                        .split(", ")
-                        .map((service, index) => (
+                  <ul className="list-disc list-inside ml-4">
+                    {(() => {
+                      const services =
+                        existingAppointmentError.details.Services;
+                      if (typeof services === "string") {
+                        return services
+                          .split(", ")
+                          .map((service, index) => (
+                            <li key={index}>{service}</li>
+                          ));
+                      } else if (Array.isArray(services)) {
+                        return services.map((service, index) => (
                           <li key={index}>{service}</li>
                         ));
-                    } else if (Array.isArray(services)) {
-                      return services.map((service, index) => (
-                        <li key={index}>{service}</li>
-                      ));
-                    } else {
-                      return <li>Services not available</li>;
-                    }
-                  })()}
+                      } else {
+                        return <li>Services not available</li>;
+                      }
+                    })()}
                   </ul>
                 </div>
                 <p className="pt-2 font-bold text-base text-right">
@@ -1548,7 +1587,8 @@ const Contact = ({ recentlyBooked, setRecentlyBooked, onFeedbackClick }) => {
           isOpen={isRecentCancelModalOpen}
           onClose={() => setIsRecentCancelModalOpen(false)}
           onConfirm={() => {
-            if (recentlyBooked) { // recentlyBooked already has uppercase keys, handleCancelWithFee will normalize
+            if (recentlyBooked) {
+              // recentlyBooked already has uppercase keys, handleCancelWithFee will normalize
               handleCancelWithFee(recentlyBooked);
               setIsRecentCancelModalOpen(false);
             }
@@ -1573,12 +1613,13 @@ const Contact = ({ recentlyBooked, setRecentlyBooked, onFeedbackClick }) => {
                 <p>
                   <strong>Name:</strong> {recentlyBooked.Name}
                 </p>
-              <p>
-                <strong>Phone:</strong> {recentlyBooked.Phone}
-              </p>
-              <p>
-                <strong>Email:</strong> {recentlyBooked.Email || "Not provided"}
-              </p>
+                <p>
+                  <strong>Phone:</strong> {recentlyBooked.Phone}
+                </p>
+                <p>
+                  <strong>Email:</strong>{" "}
+                  {recentlyBooked.Email || "Not provided"}
+                </p>
                 <p>
                   <strong>Date:</strong>{" "}
                   {format(new Date(recentlyBooked.Date), "MMMM d, yyyy")}
@@ -1600,10 +1641,12 @@ const Contact = ({ recentlyBooked, setRecentlyBooked, onFeedbackClick }) => {
                         recentlyBooked.Services.split(", ").map(
                           (service, index) => <li key={index}>{service}</li>
                         )
+                      ) : Array.isArray(recentlyBooked.Services) ? (
+                        recentlyBooked.Services.map((service, index) => (
+                          <li key={index}>{service}</li>
+                        ))
                       ) : (
-                        Array.isArray(recentlyBooked.Services) ?
-                          recentlyBooked.Services.map((service, index) => <li key={index}>{service}</li>)
-                          : <li>{recentlyBooked.Services}</li>
+                        <li>{recentlyBooked.Services}</li>
                       )
                     ) : (
                       <li>No services listed</li>
@@ -1643,7 +1686,7 @@ const Contact = ({ recentlyBooked, setRecentlyBooked, onFeedbackClick }) => {
               // Create appointment data structure for cancellation
               let services = existingAppointmentError.details.Services || [];
               // The services from the DB might be a JSON string, so we need to parse it.
-              if (typeof services === 'string') {
+              if (typeof services === "string") {
                 try {
                   services = JSON.parse(services);
                 } catch (e) {
@@ -1659,7 +1702,7 @@ const Contact = ({ recentlyBooked, setRecentlyBooked, onFeedbackClick }) => {
                 Date: date, // Use date from form
                 Time: existingAppointmentError.details.Time,
                 selectedServices: services,
-                totalPrice: existingAppointmentError.details.Total || 0
+                totalPrice: existingAppointmentError.details.Total || 0,
               };
 
               handleCancelWithFee(appointmentToCancel); // appointmentToCancel has mixed keys, handleCancelWithFee will normalize
@@ -1688,8 +1731,7 @@ const Contact = ({ recentlyBooked, setRecentlyBooked, onFeedbackClick }) => {
                   {existingAppointmentError.details.Name || "N/A"}
                 </p>
                 <p>
-                  <strong>Phone:</strong>{" "}
-                  {phone || "N/A"}
+                  <strong>Phone:</strong> {phone || "N/A"}
                 </p>
                 <p>
                   <strong>Email:</strong>{" "}
@@ -1836,10 +1878,7 @@ const Contact = ({ recentlyBooked, setRecentlyBooked, onFeedbackClick }) => {
                       ? formData.selectedServices.split(", ")
                       : formData.selectedServices
                     ).map((service, index) => (
-                      <li
-                        key={index}
-                        className="text-gray-600"
-                      >
+                      <li key={index} className="text-gray-600">
                         {service}
                       </li>
                     ))}
@@ -1918,10 +1957,8 @@ const Contact = ({ recentlyBooked, setRecentlyBooked, onFeedbackClick }) => {
                       <p className="text-xs leading-relaxed">
                         Pay ₱100 to secure your appointment. The remaining
                         balance (₱
-                        {Math.max(0, (formData.totalPrice || 0)).toFixed(
-                          2
-                        )}
-                        ) will be collected at the venue after your service.
+                        {Math.max(0, formData.totalPrice || 0).toFixed(2)}) will
+                        be collected at the venue after your service.
                       </p>
                     </div>
 
