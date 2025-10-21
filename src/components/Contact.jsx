@@ -1162,7 +1162,6 @@ const Contact = ({ recentlyBooked, setRecentlyBooked, onFeedbackClick }) => {
                 onChange={handleNameChange}
                 onBlur={() => setName(sanitizeName(name))}
                 className="w-full pl-12 pr-4 py-4 rounded-xl border-2 border-yellow-100 focus:border-yellow-400 focus:ring-2 focus:ring-yellow-200 transition-all duration-300 placeholder-yellow-300 text-yellow-700 font-medium"
-                autoFocus
               />
               {errors.name && (
                 <p className=" text-red-400 text-sm mt-1 ml-2 flex items-center gap-1">
