@@ -102,6 +102,7 @@ function App() {
         <Feedback
           isOpen={isFeedbackModalOpen}
           onClose={handleCloseFeedbackModal}
+          userName={recentlyBooked?.Name}
         />
 
         <ToastContainer

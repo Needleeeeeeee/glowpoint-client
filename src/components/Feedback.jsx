@@ -3,7 +3,7 @@ import { FiX, FiStar, FiSend } from "react-icons/fi";
 import { addFeedback as addFeedbackAction } from "./actions.js";
 import { toast } from "react-toastify";
 
-const Feedback = ({ isOpen, onClose }) => {
+const Feedback = ({ isOpen, onClose, userName }) => {
   const [rating, setRating] = useState(0);
   const [hoverRating, setHoverRating] = useState(0);
   const [comment, setComment] = useState("");
@@ -36,7 +36,11 @@ const Feedback = ({ isOpen, onClose }) => {
     setIsSubmitting(true);
 
     try {
-      const { success } = await addFeedbackAction({ rating, comment });
+      const { success } = await addFeedbackAction({
+        rating,
+        comment,
+        from_user: userName,
+      });
       setIsSubmitting(false);
 
       if (success) {

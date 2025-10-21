@@ -280,6 +280,7 @@ export const addFeedback = async (feedbackData) => {
     const { error } = await supabase().from("Feedback").insert({
       rating: feedbackData.rating,
       comment: sanitizedComment,
+      from_user: feedbackData.from_user,
     });
 
     if (error) throw error;
