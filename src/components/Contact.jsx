@@ -18,6 +18,9 @@ import {
   updateAppointmentWithPayment as updateAppointmentAction,
   validateEmail,
   verifyGCashPayment,
+  sendCancellationNotifications,
+  sendRescheduleNotifications,
+  sendConfirmationNotifications,
 } from "./actions.js";
 import Modal from "./Modal.jsx";
 import TimePicker from "./TimePicker.jsx";
@@ -551,111 +554,136 @@ const Contact = ({ recentlyBooked, setRecentlyBooked, onFeedbackClick }) => {
   };
 
   const handlePaymentConfirmation = async (gcashReference) => {
-    if (!paymentInstruction || (!formData && !cancellationData)) return;
+  if (!paymentInstruction || (!formData && !cancellationData)) return;
 
-    setIsProcessing(true);
+  setIsProcessing(true);
 
-    try {
-      const verificationResult = await verifyGCashPayment(
-        paymentInstruction.referenceNumber,
-        gcashReference
-      );
+  try {
+    const verificationResult = await verifyGCashPayment(
+      paymentInstruction.referenceNumber,
+      gcashReference
+    );
 
-      if (!verificationResult.success) {
-        toast.error(verificationResult.error || "Failed to verify payment.");
-        setIsProcessing(false);
-        return;
-      }
-
-      const paymentData = {
-        referenceNumber: paymentInstruction.referenceNumber,
-        gcashReference: gcashReference,
-        amount: paymentInstruction.amount,
-        payment_id: gcashReference,
-      };
-
-      let result;
-      let successMessage;
-
-      if (paymentInstruction.paymentType === "cancellation") {
-        if (!cancellationData) throw new Error("Cancellation data not found.");
-        result = await finalizeCancellationWithPayment(
-          cancellationData.appointmentId,
-          paymentData
-        );
-        successMessage =
-          "Cancellation fee submitted. Your appointment will be cancelled shortly.";
-        if (result.success) {
-          setRecentlyBooked(null);
-          Cookies.remove(RECENTLY_BOOKED_APPOINTMENT_COOKIE);
-        }
-      } else if (rescheduleData) {
-        result = await updateAppointmentAction(
-          rescheduleData.id,
-          formData,
-          paymentData
-        );
-        successMessage =
-          "Reschedule fee submitted. Your appointment is pending verification.";
-      } else {
-        result = await addAppointmentAction(formData, paymentData);
-        successMessage =
-          "Booking successful! Your appointment is pending verification.";
-      }
-
-      if (result.error) {
-        toast.error(
-          result.error.message ||
-            "An error occurred while saving your appointment."
-        );
-        await addFailedAppointment(
-          paymentInstruction.paymentType === "cancellation"
-            ? cancellationData?.appointmentId
-            : null,
-          {
-            // Pass appointmentId for cancellations
-            ...(formData || cancellationData),
-            reason: result.error.message,
-          }
-        );
-      } else {
-        toast.success(successMessage);
-        if (paymentInstruction.paymentType !== "cancellation" && result.data) {
-          const appointmentDetails = {
-            id: result.data.id,
-            ...(formData || {}),
-            ...result.data,
-            Total: formData.totalPrice, // Ensure Total is correctly mapped
-          };
-          Cookies.set(
-            RECENTLY_BOOKED_APPOINTMENT_COOKIE,
-            JSON.stringify(appointmentDetails),
-            { expires: new Date(appointmentDetails.Date) }
-          );
-          setRecentlyBooked(appointmentDetails);
-        }
-        // Reset form state
-        setName("");
-        setPhone("");
-        setEmail("");
-        setDate("");
-        setTime("");
-        setSelectedServices([]);
-        setCategorySelections(serviceConfig.initialSelections || {});
-        setRescheduleData(null);
-        setFormData(null);
-      }
-    } catch (error) {
-      console.error("Error during payment confirmation:", error);
-      toast.error("An unexpected error occurred during confirmation.");
-    } finally {
+    if (!verificationResult.success) {
+      toast.error(verificationResult.error || "Failed to verify payment.");
       setIsProcessing(false);
-      setIsPaymentModalOpen(false);
-      setPaymentInstruction(null);
-      setCancellationData(null);
+      return;
     }
-  };
 
+    const paymentData = {
+      referenceNumber: paymentInstruction.referenceNumber,
+      gcashReference: gcashReference,
+      amount: paymentInstruction.amount,
+      payment_id: gcashReference,
+    };
+
+    let result;
+    let successMessage;
+    let notificationResult;
+
+    if (paymentInstruction.paymentType === "cancellation") {
+      if (!cancellationData) throw new Error("Cancellation data not found.");
+      result = await finalizeCancellationWithPayment(
+        cancellationData.appointmentId,
+        paymentData
+      );
+      successMessage =
+        "Cancellation fee submitted. Your appointment will be cancelled shortly.";
+
+      if (result.success) {
+        setRecentlyBooked(null);
+        Cookies.remove(RECENTLY_BOOKED_APPOINTMENT_COOKIE);
+
+        // Send cancellation notifications
+        notificationResult = await sendCancellationNotifications(cancellationData);
+        if (!notificationResult.success) {
+          console.error('Failed to send cancellation notifications:', notificationResult.error);
+          toast.warning('Appointment cancelled, but some notifications may not have been sent.');
+        }
+      }
+    } else if (rescheduleData) {
+      result = await updateAppointmentAction(
+        rescheduleData.id,
+        formData,
+        paymentData
+      );
+      successMessage =
+        "Reschedule fee submitted. Your appointment is pending verification.";
+
+      if (result.success) {
+        // Send reschedule notifications
+        notificationResult = await sendRescheduleNotifications(formData);
+        if (!notificationResult.success) {
+          console.error('Failed to send reschedule notifications:', notificationResult.error);
+          toast.warning('Appointment rescheduled, but some notifications may not have been sent.');
+        }
+      }
+    } else {
+      result = await addAppointmentAction(formData, paymentData);
+      successMessage =
+        "Booking successful! Your appointment is pending verification.";
+
+      if (result.success && result.data) {
+        // Send confirmation notifications
+        notificationResult = await sendConfirmationNotifications(formData);
+        if (!notificationResult.success) {
+          console.error('Failed to send confirmation notifications:', notificationResult.error);
+          toast.warning('Appointment booked, but some notifications may not have been sent.');
+        }
+      }
+    }
+
+    if (result.error) {
+      toast.error(
+        result.error.message ||
+          "An error occurred while saving your appointment."
+      );
+      await addFailedAppointment(
+        paymentInstruction.paymentType === "cancellation"
+          ? cancellationData?.appointmentId
+          : null,
+        {
+          ...(formData || cancellationData),
+          reason: result.error.message,
+        }
+      );
+    } else {
+      toast.success(successMessage);
+      if (paymentInstruction.paymentType !== "cancellation" && result.data) {
+        const appointmentDetails = {
+          id: result.data.id,
+          ...(formData || {}),
+          ...result.data,
+          Total: formData.totalPrice,
+        };
+        Cookies.set(
+          RECENTLY_BOOKED_APPOINTMENT_COOKIE,
+          JSON.stringify(appointmentDetails),
+          { expires: new Date(appointmentDetails.Date) }
+        );
+        setRecentlyBooked(appointmentDetails);
+      }
+      // Reset form state
+      setName("");
+      setPhone("");
+      setEmail("");
+      setDate("");
+      setTime("");
+      setSelectedServices([]);
+      setCategorySelections(serviceConfig.initialSelections || {});
+      setRescheduleData(null);
+      setFormData(null);
+    }
+  } catch (error) {
+    console.error("Error during payment confirmation:", error);
+    toast.error("An unexpected error occurred during confirmation.");
+  } finally {
+    setIsProcessing(false);
+    setIsPaymentModalOpen(false);
+    setPaymentInstruction(null);
+    setCancellationData(null);
+  }
+};
   const handleConfirmAppointment = async () => {
     setIsModalOpen(false);
     setIsProcessing(true);

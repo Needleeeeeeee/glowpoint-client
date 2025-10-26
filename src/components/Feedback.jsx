@@ -67,7 +67,7 @@ const Feedback = ({ isOpen, onClose, userName }) => {
 
   return (
     <div
-      className="fixed inset-0 bg-black bg-opacity-60 backdrop-blur-sm z-[9999] flex justify-center items-center p-4 transition-opacity duration-300"
+      className="fixed inset-0 backdrop-blur-md bg-white/30 z-[9999] flex justify-center items-center p-4 transition-opacity duration-300"
       onClick={handleBackdropClick}
     >
       <div

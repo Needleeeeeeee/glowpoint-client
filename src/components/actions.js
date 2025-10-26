@@ -462,7 +462,7 @@ export const verifyGCashPayment = async (referenceNumber, gcashReference) => {
       return { success: false, error: 'Payment already verified' };
     }
 
-    // Update status to pending verification
+
     const updateResult = updatePaymentStatus(referenceNumber, 'pending_verification', gcashReference);
 
     if (!updateResult.success) {
@@ -478,4 +478,60 @@ export const verifyGCashPayment = async (referenceNumber, gcashReference) => {
     console.error('Payment verification error:', error);
     return { success: false, error: error.message || 'Payment verification failed' };
   }
+};
+export const sendNotifications = async (type, appointment, scheduleAt = null) => {
+  try {
+    const { data, error } = await supabase().functions.invoke('send-notifications', {
+      body: {
+        type,
+        appointment: {
+          Name: appointment.name || appointment.Name,
+          Email: appointment.email || appointment.Email,
+          Phone: appointment.phone || appointment.Phone,
+          Date: appointment.date || appointment.Date,
+          Time: appointment.time || appointment.Time,
+          Services: appointment.selectedServices || appointment.Services,
+          Total: appointment.totalPrice || appointment.Total || 0,
+        },
+        scheduleAt,
+      },
+    });
+
+    if (error) {
+      console.error('Edge function error:', error);
+      return { success: false, error: error.message };
+    }
+
+    return { success: data.success, results: data.results };
+  } catch (error) {
+    console.error('Failed to send notifications:', error);
+    return { success: false, error: error.message };
+  }
+};
+
+export const sendCancellationNotifications = async (appointment) => {
+  return await sendNotifications('cancellation', appointment);
+};
+
+
+export const sendRescheduleNotifications = async (appointment) => {
+  return await sendNotifications('reschedule', appointment);
+};
+
+export const sendConfirmationNotifications = async (appointment) => {
+  return await sendNotifications('confirmation', appointment);
+};
+
+
+export const scheduleReminderNotifications = async (appointment) => {
+  // Calculate reminder time (2 hours before)
+  const appointmentDateTime = new Date(`${appointment.date || appointment.Date}T${appointment.time || appointment.Time}`);
+  const reminderDateTime = new Date(appointmentDateTime.getTime() - 2 * 60 * 60 * 1000);
+
+  // Only schedule if appointment is more than 2 hours away
+  if (reminderDateTime > new Date()) {
+    return await sendNotifications('reminder', appointment, reminderDateTime.toISOString());
+  }
+
+  return { success: true, message: 'Appointment too soon for reminder' };
 };
