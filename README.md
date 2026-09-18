@@ -44,45 +44,6 @@ and read back service/queue configuration.
 | Utilities  | js-cookie                                                         |
 | Linting    | ESLint                                                            |
 
-## Getting started
-
-### 1. Install dependencies
-
-```bash
-npm install
-```
-
-### 2. Configure environment variables
-
-Create a `.env` file in the project root:
-
-```bash
-# Supabase
-VITE_SUPABASE_URL=your-supabase-project-url
-VITE_SUPABASE_API_KEY=your-supabase-anon-key
-
-# Business / payment configuration
-VITE_APP_BUSINESS_NAME="Glow Point Beauty"
-VITE_APP_BUSINESS_PHONE=09xxxxxxxxx
-VITE_APP_GCASH_NUMBER=09xxxxxxxxx
-VITE_APP_GCASH_NAME="Account Name"
-VITE_GCASH_QR_URL=              # optional GCash QR image URL
-VITE_APP_BOOKING_FEE=100       # PHP booking fee
-VITE_APP_CANCELLATION_FEE=50   # PHP cancellation fee
-```
-
-Variables are read through `src/components/config.js`, which falls back to
-`window` values at runtime and validates the GCash number format.
-
-### 3. Run
-
-```bash
-npm run dev      # start the dev server (Vite)
-npm run build    # production build
-npm run preview  # preview the production build
-npm run lint     # run ESLint
-```
-
 ## Project structure
 
 ```
