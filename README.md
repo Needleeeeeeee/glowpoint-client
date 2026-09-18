@@ -11,7 +11,7 @@ The app is mostly a static front end — its main job is to **post booking data*
 and read back service/queue configuration.
 
 > Looking for the admin side? See
-> [`glowpoint-dashboard`](https://github.com/Needleeeeeeee/glowpoint-dashboard),
+> [`glowpoint-dashboard`](https://github.com/needlehmbl/glowpoint-dashboard),
 > which handles appointment CRUD, payments, services, users, calendar, and
 > business analytics.
 
